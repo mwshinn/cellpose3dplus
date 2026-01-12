@@ -27,7 +27,7 @@ def run_3D_xy_zsplit(net, imgs, batch_size=8, augment=False,
     
     shape = imgs.shape[:-1] # Z,Y,X
     yf    = np.zeros((*shape, 4), np.float32) # Z, Y, X, cell-prob
-    zflow_sum = np.zeros(shape, np.float32)
+    yf[..., 0] = 0.0
     
     # First run in the xy dimension
     core_logger.info("running %s: %d planes of size (%d, %d)",
@@ -39,6 +39,7 @@ def run_3D_xy_zsplit(net, imgs, batch_size=8, augment=False,
     yf[..., 1] = y_xy[..., 0]
     yf[..., 2] = y_xy[..., 1]
     yf[..., 3] = y_xy[..., 2]
+    del y_xy
     if progress is not None:
         progress.setValue(25)
         
@@ -52,12 +53,12 @@ def run_3D_xy_zsplit(net, imgs, batch_size=8, augment=False,
                              xsl, batch_size=batch_size, augment=augment,
                              bsize=bsize, tile_overlap=tile_overlap, rsz=None)
         # channel 0 of orthogonal output is the Z flow for that view
-        zflow_sum += y_ortho[..., 0].transpose(ipm[p])
+        yf[...,0] += y_ortho[..., 0].transpose(ipm[p])
+        del y_ortho
         if progress is not None:
             progress.setValue(25 + 35 * p)
-        del y_ortho
     # average the two orthogonal estimates
-    yf[..., 0] = zflow_sum / 2.0
+    yf[..., 0] *= 0.5
     if progress is not None:
         progress.setValue(95)
     return yf, style
