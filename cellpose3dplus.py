@@ -4,10 +4,11 @@ import numpy as np
 from cellpose.core import core_logger, run_net
 import cellpose.models
 from packaging.version import Version
+import torch
 
 v = Version(cellpose.version)
 assert v.major == 3 and v.minor == 1, "This package requires cellpose version 3.1.x (ideally 3.1.1.2)"
-if v != Version("3.1.1.2"):
+if v.micro != 1:
     print("Warning, this patch was only tested on Cellpose 3.1.1.2, use at your own risk!")
 
 def run_3D_xy_zsplit(net, imgs, batch_size=8, augment=False,
@@ -19,6 +20,7 @@ def run_3D_xy_zsplit(net, imgs, batch_size=8, augment=False,
     Get X and Y flows and cellprob from XY planes, and Z flows from YZ and XZ planes.
     """
     core_logger.info("Running Cellpose3DPlus")
+    print("Running Cellpose3DPlus")
     sstr = ["YX", "ZY", "ZX"]
     pm   = [(0, 1, 2, 3), # XY
             (1, 0, 2, 3), # YZ
@@ -68,6 +70,27 @@ cellpose.core.run_3D = run_3D_xy_zsplit
 cellpose.run_3D = run_3D_xy_zsplit
 cellpose.models.run_3D = run_3D_xy_zsplit
 core_logger.info("Patched cellpose.core.run_3D with Cellpose3DPlus")
+
+# Also fix the bug where Cellpose crashes due to out of memory errors.  This
+# always comes not from running the network, but from computing the masks, so we
+# just use the CPU for that portion.
+
+old_compute_masks = cellpose.models.CellposeModel._compute_masks
+
+def new_compute_masks(self, *args, **kwargs):
+    print("Overriding compute masks")
+    device = self.device
+    try:
+        val = old_compute_masks(self, *args, **kwargs)
+    except torch.OutOfMemoryError:
+        print("Falling back to CPU mask computations to work around a cellpose bug")
+        self.device = torch.device("cpu")
+        val = old_compute_masks(self, *args, **kwargs)
+    finally:
+        self.device = device
+    return val
+
+cellpose.models.CellposeModel._compute_masks = new_compute_masks
 
 # Allow running from the command line
 if __name__ == "__main__":

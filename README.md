@@ -7,6 +7,12 @@ ratio, Cellpose can sometimes create striped or hash patterns, oversegmenting
 cells and making the segmentations unusable.  The following patch fixes this
 problem.
 
+This also includes a workaround for the ["torch.OutOfMemoryError: CUDA out of
+memory" bug](https://github.com/MouseLand/cellpose/issues/1182) in Cellpose
+([also here](https://github.com/MouseLand/cellpose/issues/918)) during the mask
+finding step.
+
+
 ## Usage
 
 Simply download this Python file and import it after after importing Cellpose:
@@ -34,7 +40,7 @@ Use:
 
 ## Requirements
 
-This ONLY supports Cellpose version 3.1.1.
+This ONLY supports Cellpose version 3.1.1.x.  (Recommended: version 3.1.1.3)
 
 ## Technical details
 
