@@ -76,13 +76,15 @@ core_logger.info("Patched cellpose.core.run_3D with Cellpose3DPlus")
 # just use the CPU for that portion.
 
 old_compute_masks = cellpose.models.CellposeModel._compute_masks
+TorchOutOfMemoryError = getattr(torch, "OutOfMemoryError", None) or torch.cuda.OutOfMemoryError
+
 
 def new_compute_masks(self, *args, **kwargs):
     print("Overriding compute masks")
     device = self.device
     try:
         val = old_compute_masks(self, *args, **kwargs)
-    except torch.OutOfMemoryError:
+    except TorchOutOfMemoryError:
         print("Falling back to CPU mask computations to work around a cellpose bug")
         self.device = torch.device("cpu")
         val = old_compute_masks(self, *args, **kwargs)
